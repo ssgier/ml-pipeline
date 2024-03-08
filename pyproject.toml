@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "ml-pipeline"
+version = "0.1.0"
+description = ""
+authors = ["ssgier <sandro.sgier@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+numpy = "^1.26.4"
+matplotlib = "^3.8.3"
+torch = "^2.2.1"
+torchvision = "^0.17.1"
+scikit-learn = "^1.4.1.post1"
+seaborn = "^0.13.2"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
