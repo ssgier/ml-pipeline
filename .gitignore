@@ -1,4 +1,5 @@
 .data
+.cambrian_out
 *.pyc
 *.pyo
 

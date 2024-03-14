@@ -1,0 +1,22 @@
+recent_rates_half_life:
+  type: real
+  init: 2000
+  scale: 500
+  min: 100
+homeostasis_bump_factor:
+  type: real
+  init: 0.01
+  min: 0.0
+  scale: 0.1
+ltp_step_up:
+  type: real
+  init: 0.002
+  scale: 0.01
+  min: 0.0
+  max: 1.0
+ltp_step_down:
+  type: real
+  init: 0.0001
+  scale: 0.001
+  min: 0.0
+  max: 1.0

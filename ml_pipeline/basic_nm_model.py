@@ -1,5 +1,6 @@
 from sklearn.base import BaseEstimator, ClassifierMixin
 from dataclasses import dataclass
+from ml_pipeline.recent_rates import RecentRates
 import numpy as np
 
 
@@ -10,13 +11,18 @@ class Config:
     ltp_step_up: float
     ltp_step_down: float
     N_repeat: int
+    recent_rates_half_life: float = 2000
+    homeostasis_bump_factor: float = 1e-2
 
 
 class BasicNMModel(BaseEstimator, ClassifierMixin):
     def __init__(self, config: Config) -> None:
         self._config = config
         self._weights = np.zeros((config.N_out, config.N_in))
-        #self._normalize_weights()
+        self._recent_rates = RecentRates(
+            config.N_out, config.recent_rates_half_life, 0.1
+        )
+        self._homeostasis_offsets = np.zeros(config.N_out)
         super().__init__()
 
     def fit(self, X, y):
@@ -40,7 +46,12 @@ class BasicNMModel(BaseEstimator, ClassifierMixin):
         self._process_frame(in_frame, tf_spike, tf_no_spike)
 
     def _predict_single(self, x) -> int:
-        return np.argmax(np.matmul(self._weights, x).reshape(self._config.N_out)).item()
+        v = (
+            np.matmul(self._weights, x).reshape(self._config.N_out)
+            + self._homeostasis_offsets
+        )
+
+        return np.argmax(v).item()
 
     def _normalize_weights(self) -> None:
         rowsums = self._weights.sum(axis=1, keepdims=True)
@@ -67,6 +78,10 @@ class BasicNMModel(BaseEstimator, ClassifierMixin):
             self._weights[ix] -= self._config.ltp_step_down
             self._weights[ix] = np.maximum(self._weights[ix], 0.0)
 
-        #self._normalize_weights()
+        # homeostasis
+        self._recent_rates.update(out)
+        target_directions = 1 / self._config.N_out - self._recent_rates.get_rates()
+        homeostasis_bumps = target_directions * self._config.homeostasis_bump_factor
+        self._homeostasis_offsets += homeostasis_bumps
 
         return out
