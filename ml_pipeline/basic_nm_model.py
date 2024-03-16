@@ -20,7 +20,7 @@ class BasicNMModel(BaseEstimator, ClassifierMixin):
         self._config = config
         self._weights = np.zeros((config.N_out, config.N_in))
         self._recent_rates = RecentRates(
-            config.N_out, config.recent_rates_half_life, 0.1
+            config.N_out, config.recent_rates_half_life, 1 / config.N_out
         )
         self._homeostasis_offsets = np.zeros(config.N_out)
         super().__init__()
