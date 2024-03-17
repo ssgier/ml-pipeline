@@ -3,7 +3,7 @@ from ml_pipeline.util import (
     make_convolution_weight_mask,
     get_competition_matrix,
     make_proximity_weight_mask,
-    compute_lateral_inhibition_addon,
+    compute_local_normalized_ranks,
 )
 from numpy.testing import assert_array_almost_equal
 import numpy as np
@@ -55,11 +55,11 @@ class TestUtil(TestCase):
 
         expected = np.array(
             [
-                [0, -1, -1, -1, 0],
-                [1, 0, -1, -1, 1],
-                [1, 1, 0, -1, 1],
-                [1, 1, 1, 0, 1],
-                [0, -1, -1, -1, 0],
+                [0, 1, 1, 1, 0],
+                [0, 0, 1, 1, 0],
+                [0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 0],
             ]
         )
 
@@ -171,9 +171,11 @@ class TestUtil(TestCase):
 
         assert_array_almost_equal(out_mask, expected_mask)
 
-    def test_compute_lateral_inhibition_addon(self):
+    def test_compute_local_normalized_ranks(self):
         v = np.array([[0.1, 0.6, 0.2], [0.1, 0.8, 0.0], [0.9, 0.3, 0.9]]).reshape(9)
-        expected_addon = np.array([[-2, 3, -1], [-4, 4, -5], [3, -1, 3]]).reshape(9)
+        expected_addon = np.array(
+            [[2 / 3, 1 / 5, 2 / 3], [4 / 5, 1 / 4, 1], [0, 3 / 5, 0]]
+        ).reshape(9)
         proximity_weight_mask = make_proximity_weight_mask(3, 1)
-        addon = compute_lateral_inhibition_addon(v, proximity_weight_mask)
+        addon = compute_local_normalized_ranks(v, proximity_weight_mask)
         assert_array_almost_equal(addon, expected_addon)

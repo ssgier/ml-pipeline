@@ -28,12 +28,10 @@ def get_competition_matrix(v: np.ndarray) -> np.ndarray:
     col = v.reshape(N, 1)
     row = v.reshape(1, N)
 
-    greater = col > row
     less = col < row
 
     result = np.zeros((N, N))
-    result[greater] = 1
-    result[less] = -1
+    result[less] = 1
 
     return result
 
@@ -58,9 +56,12 @@ def make_proximity_weight_mask(size: int, reach: int) -> np.ndarray:
     return out
 
 
-def compute_lateral_inhibition_addon(
+def compute_local_normalized_ranks(
     v: np.ndarray, proximity_weight_mask: np.ndarray
 ) -> np.ndarray:
     cm = get_competition_matrix(v)
-    addon = (cm * proximity_weight_mask).sum(axis=1)
-    return addon
+    ranks = (cm * proximity_weight_mask).sum(axis=1)
+
+    normalized_ranks = ranks / (proximity_weight_mask.sum(axis=1) - 1)
+
+    return normalized_ranks
