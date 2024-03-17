@@ -56,3 +56,11 @@ def make_proximity_weight_mask(size: int, reach: int) -> np.ndarray:
                 out[out_idx, in_idx_start:in_idx_end] = 1
 
     return out
+
+
+def compute_lateral_inhibition_addon(
+    v: np.ndarray, proximity_weight_mask: np.ndarray
+) -> np.ndarray:
+    cm = get_competition_matrix(v)
+    addon = (cm * proximity_weight_mask).sum(axis=1)
+    return addon
