@@ -21,3 +21,18 @@ def make_convolution_weight_mask(
                 out[out_idx, in_idx_start : in_idx_start + kernel_width] = 1.0
 
     return out
+
+
+def get_competition_matrix(v: np.ndarray) -> np.ndarray:
+    N = len(v)
+    col = v.reshape(N, 1)
+    row = v.reshape(1, N)
+
+    greater = col > row
+    less = col < row
+
+    result = np.zeros((N, N))
+    result[greater] = 1
+    result[less] = -1
+
+    return result
