@@ -1,5 +1,9 @@
 from unittest import TestCase
-from ml_pipeline.util import make_convolution_weight_mask, get_competition_matrix
+from ml_pipeline.util import (
+    make_convolution_weight_mask,
+    get_competition_matrix,
+    make_proximity_weight_mask,
+)
 from numpy.testing import assert_array_almost_equal
 import numpy as np
 
@@ -59,3 +63,109 @@ class TestUtil(TestCase):
         )
 
         assert_array_almost_equal(result, expected)
+
+    def test_make_proximity_weight_mask(self):
+        expected_mask = np.array(
+            [
+                [
+                    [1, 1, 0, 0],
+                    [1, 1, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                ],
+                [
+                    [1, 1, 1, 0],
+                    [1, 1, 1, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                ],
+                [
+                    [0, 1, 1, 1],
+                    [0, 1, 1, 1],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                ],
+                [
+                    [0, 0, 1, 1],
+                    [0, 0, 1, 1],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                ],
+                [
+                    [1, 1, 0, 0],
+                    [1, 1, 0, 0],
+                    [1, 1, 0, 0],
+                    [0, 0, 0, 0],
+                ],
+                [
+                    [1, 1, 1, 0],
+                    [1, 1, 1, 0],
+                    [1, 1, 1, 0],
+                    [0, 0, 0, 0],
+                ],
+                [
+                    [0, 1, 1, 1],
+                    [0, 1, 1, 1],
+                    [0, 1, 1, 1],
+                    [0, 0, 0, 0],
+                ],
+                [
+                    [0, 0, 1, 1],
+                    [0, 0, 1, 1],
+                    [0, 0, 1, 1],
+                    [0, 0, 0, 0],
+                ],
+                [
+                    [0, 0, 0, 0],
+                    [1, 1, 0, 0],
+                    [1, 1, 0, 0],
+                    [1, 1, 0, 0],
+                ],
+                [
+                    [0, 0, 0, 0],
+                    [1, 1, 1, 0],
+                    [1, 1, 1, 0],
+                    [1, 1, 1, 0],
+                ],
+                [
+                    [0, 0, 0, 0],
+                    [0, 1, 1, 1],
+                    [0, 1, 1, 1],
+                    [0, 1, 1, 1],
+                ],
+                [
+                    [0, 0, 0, 0],
+                    [0, 0, 1, 1],
+                    [0, 0, 1, 1],
+                    [0, 0, 1, 1],
+                ],
+                [
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [1, 1, 0, 0],
+                    [1, 1, 0, 0],
+                ],
+                [
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [1, 1, 1, 0],
+                    [1, 1, 1, 0],
+                ],
+                [
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 1, 1, 1],
+                    [0, 1, 1, 1],
+                ],
+                [
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 1, 1],
+                    [0, 0, 1, 1],
+                ],
+            ]
+        ).reshape(16, 16)
+
+        out_mask = make_proximity_weight_mask(4, 1)
+
+        assert_array_almost_equal(out_mask, expected_mask)

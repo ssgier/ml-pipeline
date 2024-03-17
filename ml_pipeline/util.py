@@ -18,7 +18,7 @@ def make_convolution_weight_mask(
 
             for k in range(kernel_width):
                 in_idx_start = (x_start + k) * in_size + y_start
-                out[out_idx, in_idx_start : in_idx_start + kernel_width] = 1.0
+                out[out_idx, in_idx_start : in_idx_start + kernel_width] = 1
 
     return out
 
@@ -36,3 +36,23 @@ def get_competition_matrix(v: np.ndarray) -> np.ndarray:
     result[less] = -1
 
     return result
+
+
+def make_proximity_weight_mask(size: int, reach: int) -> np.ndarray:
+    out = np.zeros((size * size, size * size))
+
+    for i in range(size):
+        for j in range(size):
+            out_idx = i * size + j
+            x_start = max(0, i - reach)
+            x_end = min(i + reach + 1, size)
+            y_start = max(0, j - reach)
+            y_end = min(j + reach + 1, size)
+
+            for x_idx in range(x_start, x_end):
+                in_idx_start = x_idx * size + y_start
+                in_idx_end = x_idx * size + y_end
+
+                out[out_idx, in_idx_start:in_idx_end] = 1
+
+    return out
