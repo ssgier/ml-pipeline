@@ -50,7 +50,6 @@ def make_proximity_weight_mask(size: int, reach: int) -> np.ndarray:
             for x_idx in range(x_start, x_end):
                 in_idx_start = x_idx * size + y_start
                 in_idx_end = x_idx * size + y_end
-
                 out[out_idx, in_idx_start:in_idx_end] = 1
 
     return out
@@ -61,7 +60,5 @@ def compute_local_normalized_ranks(
 ) -> np.ndarray:
     cm = get_competition_matrix(v)
     ranks = (cm * proximity_weight_mask).sum(axis=1)
-
     normalized_ranks = ranks / (proximity_weight_mask.sum(axis=1) - 1)
-
     return normalized_ranks

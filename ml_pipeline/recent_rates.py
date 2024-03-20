@@ -7,8 +7,11 @@ class RecentRates:
         self._rates = np.zeros(N)
 
     def update(self, target: int) -> None:
+        self.update_multi(np.array([target]))
+
+    def update_multi(self, targets: np.ndarray) -> None:
         self._rates *= self._decay_factor
-        self._rates[target] += 1.0 * (1 - self._decay_factor)
+        self._rates[targets] += 1.0 * (1 - self._decay_factor)
 
     def get_rates(self) -> np.ndarray:
         return self._rates.copy()

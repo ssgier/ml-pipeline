@@ -62,8 +62,8 @@ class BasicNMModel(BaseEstimator, ClassifierMixin):
     def _process_frame(
         self,
         in_frame: np.ndarray,
-        tf_spike: np.ndarray = np.array([]),
-        tf_no_spike: np.ndarray = np.array([]),
+        tf_spike: np.ndarray = np.array([], dtype=np.int64),
+        tf_no_spike: np.ndarray = np.array([], dtype=np.int64),
     ) -> int:
         out = self._predict_single(in_frame)
 
