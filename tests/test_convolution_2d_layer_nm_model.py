@@ -9,6 +9,8 @@ from numpy.testing import (
     assert_array_equal,
 )
 
+from ml_pipeline.recent_rates import RecentRates
+
 
 class TestConvolution2DLayerNMModel(TestCase):
     def test_empty(self):
@@ -40,7 +42,7 @@ class TestConvolution2DLayerNMModel(TestCase):
             ltp_step_up=0.3,
             ltp_step_down=0.34,
             recent_rates_half_life=2000,
-            homeostasis_bump_factor=0,
+            homeostasis_bump_factor=0.1,
             lnr_inhibition_threshold=0.5,
             inhibition_scale_factor=0.0,
             inhibition_reach=1,
@@ -49,12 +51,14 @@ class TestConvolution2DLayerNMModel(TestCase):
 
         model = Convolution2DLayerNMModel(config)
 
+        assert_array_almost_equal(model._recent_rates.get_rates(), np.full(4, 0.75))
+
         model._weights[0][0] = 0.6
         model._weights[1][9] = 0.8
         model._weights[2][10] = 0.7
         model._weights[3][24] = 0.7
 
-        result = model.map_frame(np.ones(25))
+        result = model.process_frame(np.ones(25))
         self.assertEqual(set(result.out_frame), set([1, 2, 3]))
         expected_v = np.array([0.6, 0.8, 0.7, 0.7])
         assert_array_almost_equal(result.v, expected_v)
@@ -82,4 +86,94 @@ class TestConvolution2DLayerNMModel(TestCase):
         result = model.map_frame(in_frame)
         self.assertEqual(set(result.out_frame), set([2, 3]))
         expected_v = np.array([597, 885, 2757, 3405])
+        assert_array_almost_equal(result.v, expected_v)
+
+    def test_homeostasis(self):
+        config = Config(
+            in_size=5,
+            conv_kernel_width=3,
+            conv_stride=2,
+            ltp_step_up=0.0,
+            ltp_step_down=0.0,
+            recent_rates_half_life=100,
+            homeostasis_bump_factor=60,
+            lnr_inhibition_threshold=0.5,
+            inhibition_scale_factor=0.0,
+            inhibition_reach=1,
+            num_out_spikes=3,
+        )
+
+        model = Convolution2DLayerNMModel(config)
+
+        model._weights = np.zeros((4, 25))
+        model._weights[0, 2] = 0.6
+        model._weights[1, 3] = 0.56
+        model._weights[2, 15] = 0.55
+
+        result = model.process_frame(np.ones(25))
+        self.assertEqual(set(result.out_frame), set([0, 1, 2]))
+
+        recent_rates = model._recent_rates.get_rates()
+
+        test_accounting_recent_rates = RecentRates(
+            4, config.recent_rates_half_life, 0.75
+        )
+        test_accounting_recent_rates.update_multi(np.array([0, 1, 2]))
+
+        expected_recent_rates = test_accounting_recent_rates.get_rates()
+        assert_almost_equal(recent_rates, expected_recent_rates)
+        expected_bumps_1st = (0.75 - expected_recent_rates) * 60
+
+        assert_almost_equal(model._homeostasis_offsets, expected_bumps_1st)
+        result = model.process_frame(np.ones(25))
+        assert_almost_equal(
+            result.v, expected_bumps_1st + np.array([0.6, 0.56, 0.55, 0])
+        )
+        self.assertEqual(set(result.out_frame), set([0, 1, 2]))
+
+        test_accounting_recent_rates.update_multi(np.array([0, 1, 2]))
+        expected_recent_rates = test_accounting_recent_rates.get_rates()
+        recent_rates = model._recent_rates.get_rates()
+        assert_almost_equal(recent_rates, expected_recent_rates)
+        expected_bumps_2nd = (0.75 - expected_recent_rates) * 60
+
+        expected_homeostasis_offsets = expected_bumps_1st + expected_bumps_2nd
+        assert_almost_equal(model._homeostasis_offsets, expected_homeostasis_offsets)
+        result = model.process_frame(np.ones(25))
+        assert_almost_equal(
+            result.v,
+            expected_homeostasis_offsets + np.array([0.6, 0.56, 0.55, 0]),
+        )
+        self.assertEqual(set(result.out_frame), set([0, 1, 3]))
+
+    def test_lateral_inhibition(self):
+        config = Config(
+            in_size=5,
+            conv_kernel_width=2,
+            conv_stride=1,
+            ltp_step_up=0.0,
+            ltp_step_down=0.0,
+            recent_rates_half_life=2000,
+            homeostasis_bump_factor=0.0,
+            lnr_inhibition_threshold=0.2,
+            inhibition_scale_factor=0.1,
+            inhibition_reach=1,
+            num_out_spikes=1,
+        )
+
+        model = Convolution2DLayerNMModel(config)
+        model._weights = np.ones((16, 25))
+        model._homeostasis_offsets = np.arange(16) * 0.01
+
+        result = model.map_frame(np.ones(25) * 0.5)
+
+        expected_v = np.array(
+            [
+                [2 - 0.08, 2.01 - 0.06, 2.02 - 0.06, 2.03 - 0.1 * (2 / 3 - 0.2)],
+                [2.04 - 0.04, 2.05 - 0.03, 2.06 - 0.03, 2.07 - 0.02],
+                [2.08 - 0.04, 2.09 - 0.03, 2.1 - 0.03, 2.11 - 0.02],
+                [2.12 - 0.1 * (1 / 3 - 0.2), 2.13 - 0, 2.14 - 0, 2.15 - 0],
+            ]
+        ).reshape(16)
+
         assert_array_almost_equal(result.v, expected_v)

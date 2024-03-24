@@ -63,6 +63,7 @@ class Convolution2DLayerNMModel:
         )
 
         lnr = compute_local_normalized_ranks(v, self._proximity_weight_mask)
+
         inhibition = self._config.inhibition_scale_factor * np.maximum(
             lnr - self._config.lnr_inhibition_threshold, 0
         )
