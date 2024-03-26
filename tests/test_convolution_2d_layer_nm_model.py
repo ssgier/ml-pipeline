@@ -146,7 +146,7 @@ class TestConvolution2DLayerNMModel(TestCase):
         )
         self.assertEqual(set(result.out_frame), set([0, 1, 3]))
 
-    def test_lateral_inhibition(self):
+    def test_lateral_inhibition_scenario_1(self):
         config = Config(
             in_size=5,
             conv_kernel_width=2,
@@ -177,3 +177,38 @@ class TestConvolution2DLayerNMModel(TestCase):
         ).reshape(16)
 
         assert_array_almost_equal(result.v, expected_v)
+
+    def test_lateral_inhibition_scenario_2(self):
+        config = Config(
+            in_size=5,
+            conv_kernel_width=2,
+            conv_stride=1,
+            ltp_step_up=0.0,
+            ltp_step_down=0.0,
+            recent_rates_half_life=2000,
+            homeostasis_bump_factor=0.0,
+            lnr_inhibition_threshold=0.0,
+            inhibition_scale_factor=0.5,
+            inhibition_reach=1,
+            num_out_spikes=2,
+        )
+
+        model = Convolution2DLayerNMModel(config)
+        model._weights = np.zeros_like(model._weights)
+        model._homeostasis_offsets = np.array(
+            [[0, 0, 0.1, 0], [0.87, 1, 0.9, 0], [0.2, 0.6, 0.3, 0], [0.85, 0, 0, 0]]
+        ).reshape(16)
+
+        expected_v = np.array(
+            [
+                [-1 / 3, -0.4, 0.1 - 0.2, -1 / 3],
+                [0.87 - 0.1, 1, 0.9 - 1 / 16, -0.3],
+                [0.2 - 0.4, 0.6 - 0.25, 0.3 - 3 / 16, -1 / 5],
+                [0.85, -0.4, -0.2, -1 / 6],
+            ]
+        ).reshape(16)
+
+        result = model.map_frame(np.zeros(25))
+
+        assert_array_almost_equal(result.v, expected_v)
+        self.assertEqual(set(result.out_frame), set([5, 12]))
