@@ -88,7 +88,7 @@ class Convolution2DLayerNMModel:
         effective_spikes = np.setdiff1d(np.union1d(out_frame, tf_spike), tf_no_spike)
         effective_no_spikes = np.setdiff1d(self._in_arange, effective_spikes)
 
-        cols_to_update = in_frame > 0.5
+        cols_to_update = in_frame > 0.0
 
         if cols_to_update.sum() > 0:
             if len(effective_spikes) > 0:

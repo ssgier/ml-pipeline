@@ -7,6 +7,7 @@ from numpy.testing import (
     assert_almost_equal,
     assert_array_almost_equal,
     assert_array_equal,
+    assert_equal,
 )
 
 from ml_pipeline.recent_rates import RecentRates
@@ -212,3 +213,62 @@ class TestConvolution2DLayerNMModel(TestCase):
 
         assert_array_almost_equal(result.v, expected_v)
         self.assertEqual(set(result.out_frame), set([5, 12]))
+
+    def test_plasticity(self):
+        config = Config(
+            in_size=4,
+            conv_kernel_width=2,
+            conv_stride=1,
+            ltp_step_up=0.3,
+            ltp_step_down=0.36,
+            recent_rates_half_life=2000,
+            homeostasis_bump_factor=0.0,
+            lnr_inhibition_threshold=0.0,
+            inhibition_scale_factor=0.0,
+            inhibition_reach=1,
+            num_out_spikes=5,
+        )
+
+        model = Convolution2DLayerNMModel(config)
+        model._weights = np.full_like(model._weights, 0.5)
+        model._weights[8, 6] = 0.85
+        model._weights[2, 6] = 0.1
+
+        model._homeostasis_offsets = np.array(
+            [[0.6, 0.8, 0], [0, 0, 0.9], [0, 0.6, 0.7]]
+        ).reshape(9)
+
+        in_frame = np.zeros(16)
+        in_frame[[6, 8, 9]] = 0.1
+        result = model.process_frame(
+            in_frame, tf_spike=np.array([0, 3]), tf_no_spike=np.array([1])
+        )
+
+        self.assertEqual(set(result.out_frame), set([0, 1, 5, 7, 8]))
+
+        expected_updated_weights = np.full_like(model._weights, 0.5)
+        expected_updated_weights[:, 6] = [0.8, 0.14, 0, 0.8, 0.14, 0.8, 0.14, 0.8, 1]
+        expected_updated_weights[:, 8] = [
+            0.8,
+            0.14,
+            0.14,
+            0.8,
+            0.14,
+            0.8,
+            0.14,
+            0.8,
+            0.8,
+        ]
+        expected_updated_weights[:, 9] = [
+            0.8,
+            0.14,
+            0.14,
+            0.8,
+            0.14,
+            0.8,
+            0.14,
+            0.8,
+            0.8,
+        ]
+
+        assert_array_almost_equal(model._weights, expected_updated_weights)
