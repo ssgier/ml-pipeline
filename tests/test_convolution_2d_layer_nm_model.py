@@ -272,3 +272,12 @@ class TestConvolution2DLayerNMModel(TestCase):
         ]
 
         assert_array_almost_equal(model._weights, expected_updated_weights)
+
+        model._homeostasis_offsets[:] = 0
+
+        in_frame = np.zeros(16)
+        in_frame[8] = 1
+        result = model.process_frame(in_frame)
+
+        v_expected = np.array([[0, 0, 0], [0.8, 0, 0], [0.14, 0, 0]]).reshape(9)
+        assert_array_almost_equal(result.v, v_expected)

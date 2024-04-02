@@ -54,6 +54,9 @@ class Convolution2DLayerNMModel:
         )
         self._in_arange = np.arange(self._N_out)
 
+    def get_N_out(self):
+        return self._N_out
+
     def map_frame(self, in_frame: np.ndarray) -> Result:
         v = (
             np.matmul(self._weights * self._conv_weight_mask, in_frame).reshape(
