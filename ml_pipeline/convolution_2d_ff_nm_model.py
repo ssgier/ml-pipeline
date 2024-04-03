@@ -1,20 +1,18 @@
 from sklearn.base import BaseEstimator, ClassifierMixin
 from dataclasses import dataclass
 from ml_pipeline.recent_rates import RecentRates
-from ml_pipeline.convolution_2d_layer_nm_model import Convolution2DLayerNMModel
+from ml_pipeline.layer_nm_model import LayerNMModel
 from typing import List
 import numpy as np
 
 
 @dataclass
 class Config:
-    N_in: int
-    N_out: int
     N_repeat: int
 
 
 class Convolution2DFFNMModel(BaseEstimator, ClassifierMixin):
-    def __init__(self, config: Config, layers: List[Convolution2DLayerNMModel]) -> None:
+    def __init__(self, config: Config, layers: List[LayerNMModel]) -> None:
         self._config = config
         self._layers = layers
         super().__init__()
@@ -43,7 +41,7 @@ class Convolution2DFFNMModel(BaseEstimator, ClassifierMixin):
 
         tf_spike = np.array([target])
         tf_no_spike = np.concatenate(
-            [np.arange(target), np.arange(target + 1, self._config.N_out)]
+            [np.arange(target), np.arange(target + 1, self._layers[-1].get_N_out())]
         )
 
         self._layers[-1].process_frame(

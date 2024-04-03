@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Union
 from math import sqrt
 from ml_pipeline.recent_rates import RecentRates
 from ml_pipeline.util import (
@@ -10,7 +11,7 @@ import numpy as np
 
 
 @dataclass
-class Config:
+class ConvolutionLayer2DConfig:
     in_size: int
     conv_kernel_width: int
     conv_stride: int
@@ -25,50 +26,78 @@ class Config:
 
 
 @dataclass
+class FullyConnectedLayerConfig:
+    N_in: int
+    N_out: int
+    ltp_step_up: float
+    ltp_step_down: float
+    recent_rates_half_life: float
+    homeostasis_bump_factor: float
+    num_out_spikes: int
+
+
+@dataclass
 class Result:
     out_frame: np.ndarray
     v: np.ndarray
 
 
-class Convolution2DLayerNMModel:
-    def __init__(self, config: Config) -> None:
+class LayerNMModel:
+    def __init__(
+        self, config: Union[ConvolutionLayer2DConfig, FullyConnectedLayerConfig]
+    ) -> None:
         self._config = config
-        self._conv_weight_mask = make_convolution_weight_mask(
-            config.in_size, config.conv_kernel_width, config.conv_stride
-        )
-        self._weights = np.zeros_like(self._conv_weight_mask)
 
-        N_out = len(self._weights)
-        self._N_out = N_out
-        out_size = sqrt(N_out)
-        assert out_size.is_integer()
-        out_size = int(out_size)
+        if isinstance(config, ConvolutionLayer2DConfig):
+            self._weight_mask = make_convolution_weight_mask(
+                config.in_size, config.conv_kernel_width, config.conv_stride
+            )
+            self._weights = np.zeros_like(self._weight_mask)
+
+            N_out = len(self._weights)
+            self._N_out = N_out
+            out_size = sqrt(N_out)
+            assert out_size.is_integer()
+            out_size = int(out_size)
+            self._proximity_weight_mask = make_proximity_weight_mask(
+                out_size, config.inhibition_reach
+            )
+            self._in_arange = np.arange(self._N_out)
+            self._inhibition_scale_factor = config.inhibition_scale_factor
+            self._lnr_inhibition_threshold = config.lnr_inhibition_threshold
+        elif isinstance(config, FullyConnectedLayerConfig):
+            self._weight_mask = np.ones((config.N_out, config.N_in))
+            self._weights = np.zeros_like(self._weight_mask)
+
+            N_out = len(self._weights)
+            self._N_out = config.N_out
+            self._proximity_weight_mask = np.ones((config.N_out, config.N_out))
+            self._in_arange = np.arange(self._N_out)
+            self._inhibition_scale_factor = 0
+            self._lnr_inhibition_threshold = 0
+        else:
+            raise TypeError("unrecognized config type")
+
         self._target_rate = config.num_out_spikes / N_out
         self._recent_rates = RecentRates(
             N_out, config.recent_rates_half_life, self._target_rate
         )
 
         self._homeostasis_offsets = np.zeros(N_out)
-        self._proximity_weight_mask = make_proximity_weight_mask(
-            out_size, config.inhibition_reach
-        )
-        self._in_arange = np.arange(self._N_out)
 
     def get_N_out(self):
         return self._N_out
 
     def map_frame(self, in_frame: np.ndarray) -> Result:
         v = (
-            np.matmul(self._weights * self._conv_weight_mask, in_frame).reshape(
-                self._N_out
-            )
+            np.matmul(self._weights * self._weight_mask, in_frame).reshape(self._N_out)
             + self._homeostasis_offsets
         )
 
         lnr = compute_local_normalized_ranks(v, self._proximity_weight_mask)
 
-        inhibition = self._config.inhibition_scale_factor * np.maximum(
-            lnr - self._config.lnr_inhibition_threshold, 0
+        inhibition = self._inhibition_scale_factor * np.maximum(
+            lnr - self._lnr_inhibition_threshold, 0
         )
 
         v -= inhibition

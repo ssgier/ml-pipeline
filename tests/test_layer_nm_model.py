@@ -1,6 +1,10 @@
 from unittest import TestCase
 import numpy as np
-from ml_pipeline.convolution_2d_layer_nm_model import Convolution2DLayerNMModel, Config
+from ml_pipeline.layer_nm_model import (
+    FullyConnectedLayerConfig,
+    LayerNMModel,
+    ConvolutionLayer2DConfig,
+)
 
 from numpy.testing import (
     assert_allclose,
@@ -13,9 +17,9 @@ from numpy.testing import (
 from ml_pipeline.recent_rates import RecentRates
 
 
-class TestConvolution2DLayerNMModel(TestCase):
+class TestLayerNMModel(TestCase):
     def test_empty(self):
-        config = Config(
+        config = ConvolutionLayer2DConfig(
             in_size=5,
             conv_kernel_width=3,
             conv_stride=2,
@@ -29,14 +33,14 @@ class TestConvolution2DLayerNMModel(TestCase):
             num_out_spikes=3,
         )
 
-        model = Convolution2DLayerNMModel(config)
+        model = LayerNMModel(config)
         result = model.process_frame(np.zeros(25))
         self.assertEqual(len(result.out_frame), 3)
         assert_array_almost_equal(model._weights, np.zeros((4, 25)))
         assert_almost_equal(result.v, np.zeros(4))
 
     def test_simple_scenario(self):
-        config = Config(
+        config = ConvolutionLayer2DConfig(
             in_size=5,
             conv_kernel_width=3,
             conv_stride=2,
@@ -50,7 +54,7 @@ class TestConvolution2DLayerNMModel(TestCase):
             num_out_spikes=3,
         )
 
-        model = Convolution2DLayerNMModel(config)
+        model = LayerNMModel(config)
 
         assert_array_almost_equal(model._recent_rates.get_rates(), np.full(4, 0.75))
 
@@ -65,7 +69,7 @@ class TestConvolution2DLayerNMModel(TestCase):
         assert_array_almost_equal(result.v, expected_v)
 
     def test_basic_convolution(self):
-        config = Config(
+        config = ConvolutionLayer2DConfig(
             in_size=5,
             conv_kernel_width=3,
             conv_stride=2,
@@ -79,7 +83,7 @@ class TestConvolution2DLayerNMModel(TestCase):
             num_out_spikes=2,
         )
 
-        model = Convolution2DLayerNMModel(config)
+        model = LayerNMModel(config)
         model._weights = np.tile(np.arange(25, dtype=np.float64) + 1, (4, 1))
 
         in_frame = np.arange(25, dtype=np.float64) + 1
@@ -90,7 +94,7 @@ class TestConvolution2DLayerNMModel(TestCase):
         assert_array_almost_equal(result.v, expected_v)
 
     def test_homeostasis(self):
-        config = Config(
+        config = ConvolutionLayer2DConfig(
             in_size=5,
             conv_kernel_width=3,
             conv_stride=2,
@@ -104,7 +108,7 @@ class TestConvolution2DLayerNMModel(TestCase):
             num_out_spikes=3,
         )
 
-        model = Convolution2DLayerNMModel(config)
+        model = LayerNMModel(config)
 
         model._weights = np.zeros((4, 25))
         model._weights[0, 2] = 0.6
@@ -148,7 +152,7 @@ class TestConvolution2DLayerNMModel(TestCase):
         self.assertEqual(set(result.out_frame), set([0, 1, 3]))
 
     def test_lateral_inhibition_scenario_1(self):
-        config = Config(
+        config = ConvolutionLayer2DConfig(
             in_size=5,
             conv_kernel_width=2,
             conv_stride=1,
@@ -162,7 +166,7 @@ class TestConvolution2DLayerNMModel(TestCase):
             num_out_spikes=1,
         )
 
-        model = Convolution2DLayerNMModel(config)
+        model = LayerNMModel(config)
         model._weights = np.ones((16, 25))
         model._homeostasis_offsets = np.arange(16) * 0.01
 
@@ -180,7 +184,7 @@ class TestConvolution2DLayerNMModel(TestCase):
         assert_array_almost_equal(result.v, expected_v)
 
     def test_lateral_inhibition_scenario_2(self):
-        config = Config(
+        config = ConvolutionLayer2DConfig(
             in_size=5,
             conv_kernel_width=2,
             conv_stride=1,
@@ -194,7 +198,7 @@ class TestConvolution2DLayerNMModel(TestCase):
             num_out_spikes=2,
         )
 
-        model = Convolution2DLayerNMModel(config)
+        model = LayerNMModel(config)
         model._weights = np.zeros_like(model._weights)
         model._homeostasis_offsets = np.array(
             [[0, 0, 0.1, 0], [0.87, 1, 0.9, 0], [0.2, 0.6, 0.3, 0], [0.85, 0, 0, 0]]
@@ -215,7 +219,7 @@ class TestConvolution2DLayerNMModel(TestCase):
         self.assertEqual(set(result.out_frame), set([5, 12]))
 
     def test_plasticity(self):
-        config = Config(
+        config = ConvolutionLayer2DConfig(
             in_size=4,
             conv_kernel_width=2,
             conv_stride=1,
@@ -229,7 +233,7 @@ class TestConvolution2DLayerNMModel(TestCase):
             num_out_spikes=5,
         )
 
-        model = Convolution2DLayerNMModel(config)
+        model = LayerNMModel(config)
         model._weights = np.full_like(model._weights, 0.5)
         model._weights[8, 6] = 0.85
         model._weights[2, 6] = 0.1
@@ -281,3 +285,43 @@ class TestConvolution2DLayerNMModel(TestCase):
 
         v_expected = np.array([[0, 0, 0], [0.8, 0, 0], [0.14, 0, 0]]).reshape(9)
         assert_array_almost_equal(result.v, v_expected)
+
+    def test_fully_connected(self):
+        config = FullyConnectedLayerConfig(
+            N_in=8,
+            N_out=3,
+            ltp_step_up=0.3,
+            ltp_step_down=0.36,
+            recent_rates_half_life=2000,
+            homeostasis_bump_factor=0.0,
+            num_out_spikes=2,
+        )
+
+        model = LayerNMModel(config)
+
+        assert_array_almost_equal(model._weight_mask, np.ones((3, 8)))
+
+        self.assertEqual(model.get_N_out(), 3)
+
+        model._weights[1, 5] = 0.55
+        model._weights[2, 2] = 0.5
+        model._weights[2, 5] = 0.6
+
+        in_frame = np.array([0, 0, 2, 3, 0, 10, 0, 0], dtype=np.float64)
+
+        result = model.process_frame(in_frame)
+
+        v_expected = np.array([0, 5.5, 7])
+
+        assert_array_almost_equal(result.v, v_expected)
+        self.assertEqual(set(result.out_frame), set([1, 2]))
+
+        weights_expected = np.array(
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0.3, 0.3, 0, 0.85, 0, 0],
+                [0, 0, 0.8, 0.3, 0, 0.9, 0, 0],
+            ]
+        )
+
+        assert_array_almost_equal(model._weights, weights_expected)
